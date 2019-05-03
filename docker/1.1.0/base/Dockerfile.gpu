@@ -90,7 +90,10 @@ RUN cd /tmp \
         'six==1.12.0' \
         'fastai==1.0.52' \
         'opencv-python>=4.0,<4.1' \
+  && pip install --no-cache-dir \
+        'pyarrow==0.13.0' \
   && python -c 'import torch' \
+  && python -c 'import pyarrow' \
   # Apex is NVIDIA-maintained utilities to streamline
   # mixed precision and distributed training in Pytorch
   # https://github.com/nvidia/apex
@@ -120,66 +123,95 @@ RUN cd /tmp \
   && nvcc --version \
   && echo "Done with Apex"
 
-# Install conda and arrow
-# TODO: Try to avoid conda by checking "Ubuntu 16.04 LTS" at
-#       https://github.com/apache/arrow/blob/master/site/install.md
-RUN cd /tmp \
-  && curl -sSL "https://repo.anaconda.com/miniconda/Miniconda${py_version}-latest-Linux-x86_64.sh" -o /tmp/miniconda.sh \
-  && bash /tmp/miniconda.sh -p /miniconda -b \
-  && rm -rf /tmp/miniconda.sh \
-  && export PATH="/miniconda/bin:${PATH}" \
-  && conda update -y conda \
-  && conda --version \
-  && conda install -y -c pytorch \
-        'pytorch=1.1.0' \
-        'torchvision=0.2.2' \
-        'pillow=6.0.0' \
-        'cudatoolkit=10.0.130' \
-  && conda install -y -c conda-forge \
-        'pyarrow=0.13.0' \
-        'arrow=0.13.1' \
-        'python-snappy=0.5.4' \
-        'pillow=6.0.0' \
-        'retrying=1.3.3' \
-        'six=1.12.0' \
-  && conda clean --all --yes \
-  && rm -rf /var/lib/apt/lists/* \
-  && cd /tmp \
-  && nvcc --version \
-  && _apex_commit="39e153a3159724432257a8fc118807b359f4d1c8" \
-  && curl -L -O "https://github.com/NVIDIA/apex/archive/${_apex_commit}.zip" \
-  && unzip -x "${_apex_commit}.zip" \
-  && cd "apex-${_apex_commit}" \
-  && pip install -v \
-        --no-cache-dir \
-        --global-option="--cpp_ext" \
-        --global-option="--cuda_ext" . \
-  && cd /tmp \
-  && rm -rf apex* \
-  && pip install --no-cache-dir \
-        'torch==1.1.0' \
-        'torchvision==0.2.2' \
-        'Pillow==6.0.0' \
-        'retrying==1.3.3' \
-        'six==1.12.0' \
-        'fastai==1.0.52' \
-        'opencv-python>=4.0,<4.1' \
-  && echo "Conda: Check that everything is still there" \
-  && which python \
-  && which pip \
-  # TODO: Fix links for Miniconda if import pyarrow fails
-  # && ln -s -f /usr/bin/python3.7 /usr/bin/python \
-  # && ln -s -f /usr/local/bin/pip /usr/bin/pip \
-  && python --version \
-  && python --version 2>&1 | grep "3\.7\.3" \
-  && pip --version \
-  && pip --version 2>&1 | grep "python 3\.7" \
-  && nvcc --version \
-  && python -c 'import pyarrow' \
-  && python -c 'import torch' \
-  && echo "Done with Conda"
+# Using "Ubuntu 16.04 LTS" as showed at:
+# https://github.com/apache/arrow/blob/master/site/install.md
+# RUN cd /tmp \
+#   && touch /etc/apt/sources.list.d/apache-arrow.list \
+#   && echo "deb [arch=amd64] https://dl.bintray.com/apache/arrow/ubuntu/ xenial main" \
+#         >> /etc/apt/sources.list.d/apache-arrow.list \
+#   && echo "deb-src https://dl.bintray.com/apache/arrow/ubuntu/ xenial main" \
+#         >> /etc/apt/sources.list.d/apache-arrow.list \
+#   && curl "https://dist.apache.org/repos/dist/dev/arrow/KEYS" | apt-key add - \
+#   && curl "https://apt.llvm.org/llvm-snapshot.gpg.key" | apt-key add - \
+#   && touch /etc/apt/sources.list.d/llvm.list \
+#   && echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main" \
+#         >> /etc/apt/sources.list.d/llvm.list \
+#   && echo "deb-src http://apt.llvm.org/xenial/ llvm-toolchain-xenial-7 main" \
+#         >> /etc/apt/sources.list.d/llvm.list \
+#   && apt -qqy update \
+#   && apt -qqy --no-install-recommends install \
+#         'libarrow-dev' \
+#         'libarrow-glib-dev' \
+#         'libparquet-dev' \
+#         'libparquet-glib-dev' \
+#   && apt -qyy remove \
+#         'python2.7' \
+#         'python2.7-minimal' \
+#         'libpython2.7-minimal' \
+#         'libpython2.7-stdlib' \
+#   && pip install --no-cache-dir \
+#         'pyarrow==0.13.0' \
+#   && python -c 'import pyarrow' \
+#   && python -c 'import torch' \
+#   && echo "Done with Arrow"
 
-ENV PATH="/miniconda/bin:${PATH}"
+# Install conda and arrow
+# RUN cd /tmp \
+#   && curl -sSL "https://repo.anaconda.com/miniconda/Miniconda${py_version}-latest-Linux-x86_64.sh" -o /tmp/miniconda.sh \
+#   && bash /tmp/miniconda.sh -p /miniconda -b \
+#   && rm -rf /tmp/miniconda.sh \
+#   && export PATH="/miniconda/bin:${PATH}" \
+#   && conda update -y conda \
+#   && conda --version \
+#   && conda install -y -c pytorch \
+#         'pytorch=1.1.0' \
+#         'torchvision=0.2.2' \
+#         'pillow=6.0.0' \
+#         'cudatoolkit=10.0.130' \
+#   && conda install -y -c conda-forge \
+#         'pyarrow=0.13.0' \
+#         'arrow=0.13.1' \
+#         'python-snappy=0.5.4' \
+#         'pillow=6.0.0' \
+#         'retrying=1.3.3' \
+#         'six=1.12.0' \
+#   && conda clean --all --yes \
+#   && rm -rf /var/lib/apt/lists/* \
+#   && cd /tmp \
+#   && nvcc --version \
+#   && _apex_commit="39e153a3159724432257a8fc118807b359f4d1c8" \
+#   && curl -L -O "https://github.com/NVIDIA/apex/archive/${_apex_commit}.zip" \
+#   && unzip -x "${_apex_commit}.zip" \
+#   && cd "apex-${_apex_commit}" \
+#   && pip install -v \
+#         --no-cache-dir \
+#         --global-option="--cpp_ext" \
+#         --global-option="--cuda_ext" . \
+#   && cd /tmp \
+#   && rm -rf apex* \
+#   && pip install --no-cache-dir \
+#         'torch==1.1.0' \
+#         'torchvision==0.2.2' \
+#         'Pillow==6.0.0' \
+#         'retrying==1.3.3' \
+#         'six==1.12.0' \
+#         'fastai==1.0.52' \
+#         'opencv-python>=4.0,<4.1' \
+#   && echo "Conda: Check that everything is still there" \
+#   && which python \
+#   && which pip \
+#   # TODO: Fix links for Miniconda if import pyarrow fails
+#   # && ln -s -f /usr/bin/python3.7 /usr/bin/python \
+#   # && ln -s -f /usr/local/bin/pip /usr/bin/pip \
+#   && python --version \
+#   && python --version 2>&1 | grep "3\.7\.3" \
+#   && pip --version \
+#   && pip --version 2>&1 | grep "python 3\.7" \
+#   && nvcc --version \
+#   && python -c 'import pyarrow' \
+#   && python -c 'import torch' \
+#   && echo "Done with Conda"
+# ENV PATH="/miniconda/bin:${PATH}"
 
 RUN cd /tmp \
   && echo "Final: Check that everything is still there" \
