@@ -1,15 +1,22 @@
-# TODO: try cuda 10
-# FROM nvidia/cuda:10.1-cudnn7-runtime-ubuntu16.04
-# FROM nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
-FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+# FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu16.04
+# FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
+# FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
+FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu18.04
 
-RUN nvcc --version
+# cudnn 7.5.0
+# FROM nvcr.io/nvidia/pytorch:19.03-py3
+
+# cudnn 7.4.1
+# FROM nvcr.io/nvidia/pytorch:18.12.1-py3
+
+RUN nvcc --version \
+  && cat /usr/include/x86_64-linux-gnu/cudnn_v*.h | grep CUDNN_MAJOR -A 2 \
+  && cat /usr/local/cuda/version.txt
 
 ARG py_version
 
 # Validate that arguments are specified
 RUN test $py_version || exit 1
-RUN if [ $py_version -neq 3 ]; then exit 2; fi
 
 # No interactive frontend during docker build
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -48,9 +55,9 @@ RUN echo "Setting time zone to '${TZ}'" \
 
 # Install python and nginx
 RUN cd /tmp \
- && apt-get update && apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa -y && \
-    apt-get update && apt-get install -y --no-install-recommends \
+ && apt-get update && apt-get install -y --no-install-recommends software-properties-common \
+ && add-apt-repository ppa:deadsnakes/ppa -y \
+ && apt-get update && apt-get install -y --no-install-recommends \
         'build-essential' \
         'apt-transport-https' \
         'gnupg' \
@@ -223,4 +230,3 @@ RUN cd /tmp \
   && python -c 'import pyarrow' \
   && python -c 'import torch' \
   && echo "Done with Final"
-

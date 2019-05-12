@@ -82,9 +82,6 @@ If you want to build your base docker image, then use:
 
     # All build instructions assume you're building from the root directory of the sagemaker-pytorch-container.
 
-    # CPU
-    docker build -t pytorch-base:1.1.0-cpu-py3 -f docker/1.1.0/base/Dockerfile.cpu --build-arg py_version=3 .
-
     # GPU
     docker build -t pytorch-base:1.1.0-gpu-py3 -f docker/1.1.0/base/Dockerfile.gpu --build-arg py_version=3 .
 
@@ -117,11 +114,15 @@ If you want to build "final" Docker images, then use:
 
     # All build instructions assume you're building from the root directory of the sagemaker-pytorch-container.
 
-    # CPU
-    docker build -t ${img} -f docker/1.1.0/final/Dockerfile.cpu --build-arg py_version=3 .
-
     # GPU
+    img="962522375529.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-pytorch-1.1.0-gpu-py3-conda:master-5"
     docker build -t ${img} -f docker/1.1.0/final/Dockerfile.gpu --build-arg py_version=3 .
+
+Push
+----
+$(aws ecr get-login --profile=datalab --region=eu-central-1 --registry-ids=962522375529 --no-include-email)
+aws ecr create-repository --profile=datalab --region=eu-central-1 --repository-name sagemaker-pytorch-1.1.0-gpu-py3-conda
+docker push ${img}
 
 
 Running the tests
@@ -178,20 +179,12 @@ If you want to run local integration tests, then use:
 
     # Required arguments for integration tests are found in test/conftest.py
 
-    pytest test/integration/local --docker-base-name <your_docker_image> \
-                      --tag <your_docker_image_tag> \
-                      --py-version <2_or_3> \
-                      --framework-version 1.1.0 \
-                      --processor <cpu_or_gpu>
-
-::
-
     # Example
     pytest test/integration/local --docker-base-name preprod-pytorch \
-                      --tag 1.0 \
+                      --tag 1.1 \
                       --py-version 3 \
                       --framework-version 1.1.0 \
-                      --processor cpu
+                      --processor gpu
 
 SageMaker Integration Tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -229,7 +222,7 @@ SageMaker <https://aws.amazon.com/sagemaker/>`__, then use:
     pytest test/integration/sagemaker --aws-id 12345678910 \
                            --docker-base-name preprod-pytorch \
                            --instance-type ml.m4.xlarge \
-                           --tag 1.0
+                           --tag 1.1
 
 Contributing
 ------------
