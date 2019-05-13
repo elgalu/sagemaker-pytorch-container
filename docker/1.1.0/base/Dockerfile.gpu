@@ -101,6 +101,8 @@ RUN cd /tmp \
         'nginx' \
         'git' \
         'cmake' \
+        'libblas-dev' \
+        'liblapack-dev' \
   # Remove redundant packages
   && apt -qyy remove \
         'python3.5' \
