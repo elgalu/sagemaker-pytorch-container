@@ -15,5 +15,7 @@ RUN pip install --no-cache-dir /sagemaker_pytorch_container-1.1-py2.py3-none-any
 ENV SAGEMAKER_TRAINING_MODULE sagemaker_pytorch_container.training:main
 ENV SAGEMAKER_SERVING_MODULE sagemaker_pytorch_container.serving:main
 
+WORKDIR /
+
 # Starts framework
 ENTRYPOINT ["bash", "-m", "start_with_right_hostname.sh"]

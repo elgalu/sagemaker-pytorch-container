@@ -1,10 +1,16 @@
 # FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu16.04
-# FROM nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04
-# FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu16.04
-FROM nvidia/cuda:9.1-cudnn7-devel-ubuntu18.04
+
+# cudnn 7.5.0
+# CUDA 9.2.148
+FROM nvidia/cuda:9.2-cudnn7-devel-ubuntu16.04
 
 # cudnn 7.5.0
 # FROM nvcr.io/nvidia/pytorch:19.03-py3
+
+# cudnn 7.5.0
+# CUDA 10.1.105
+# torch 1.1.0a0+9eb0f43
+# FROM nvcr.io/nvidia/pytorch:19.04-py3
 
 # cudnn 7.4.1
 # FROM nvcr.io/nvidia/pytorch:18.12.1-py3
@@ -53,7 +59,30 @@ RUN echo "Setting time zone to '${TZ}'" \
   && echo "${TZ}" > /etc/timezone \
   && dpkg-reconfigure --frontend noninteractive tzdata
 
+COPY libcudnn7_7.5.1.10-1+cuda9.2_amd64.deb /
+COPY libcudnn7-dev_7.5.1.10-1+cuda9.2_amd64.deb /
+
+# (7.5.1.10-1+cuda9.2) over (7.5.0.56-1+cuda9.2)
+RUN cd /tmp \
+ && dpkg -i /libcudnn7_7.5.1.10-1+cuda9.2_amd64.deb \
+ && dpkg -i /libcudnn7-dev_7.5.1.10-1+cuda9.2_amd64.deb \
+ && echo "Done: (7.5.1.10-1+cuda9.2) over (7.5.0.56-1+cuda9.2)"
+
+RUN nvcc --version \
+  && cat /usr/include/x86_64-linux-gnu/cudnn_v*.h | grep CUDNN_MAJOR -A 2 \
+  && cat /usr/local/cuda/version.txt
+
 # Install python and nginx
+# Compile PyTorch from sources. Compiling notes:
+#   Found CUDA with FP16 support, compiling with torch.cuda.HalfTensor
+#     good
+#   Found a library with BLAS API (generic).
+#     generic means it wasn't compiled for a specific CPU
+#   Found a library with LAPACK API (generic)
+#     generic means it wasn't compiled for a specific CPU
+#   MIOpen not found. Compiling without MIOpen support
+#     MIOpen is AMD’s library for high performance ML primitives
+#   ROCm enabled platform
 RUN cd /tmp \
  && apt-get update && apt-get install -y --no-install-recommends software-properties-common \
  && add-apt-repository ppa:deadsnakes/ppa -y \
@@ -70,6 +99,9 @@ RUN cd /tmp \
         'libxext6' \
         'libxrender-dev' \
         'nginx' \
+        'git' \
+        'cmake' \
+  # Remove redundant packages
   && apt -qyy remove \
         'python3.5' \
         'python3.5-minimal' \
@@ -101,6 +133,18 @@ RUN cd /tmp \
         'pyarrow==0.13.0' \
   && python -c 'import torch' \
   && python -c 'import pyarrow' \
+  # Upgrade PyTorch and compile with current CUDA version
+  && cd /tmp \
+  && cmm="163f0e182c7e092d6b61600e3a5e20347abab848" \
+  && git clone "https://github.com/pytorch/pytorch" \
+  && cd pytorch \
+  && git checkout "${cmm}" -b local_build \
+  && git submodule update --init --recursive \
+  && python setup.py install \
+  && cd /tmp \
+  && rm -rf /tmp/py* \
+  && python -c 'import torch' \
+  && python -c 'import pyarrow' \
   # Apex is NVIDIA-maintained utilities to streamline
   # mixed precision and distributed training in Pytorch
   # https://github.com/nvidia/apex
@@ -110,16 +154,15 @@ RUN cd /tmp \
   && pip --version \
   && pip --version 2>&1 | grep "python 3\.7" \
   && nvcc --version \
-  && _apex_commit="39e153a3159724432257a8fc118807b359f4d1c8" \
+  && _apex_commit="4ff153cd50e4533b21dc1fd97c0ed609e19c4042" \
   && curl -L -O "https://github.com/NVIDIA/apex/archive/${_apex_commit}.zip" \
   && unzip -x "${_apex_commit}.zip" \
   && cd "apex-${_apex_commit}" \
-  && pip install -v \
-        --no-cache-dir \
+  && pip install --no-cache-dir \
         --global-option="--cpp_ext" \
         --global-option="--cuda_ext" . \
   && cd /tmp \
-  && rm -rf apex* \
+  && rm -rf apex* *.zip \
   && apt -qqy autoremove \
   && rm -rf /var/lib/apt/lists/* \
   && echo "Apex: Check that everything is still there" \
@@ -128,6 +171,9 @@ RUN cd /tmp \
   && pip --version \
   && pip --version 2>&1 | grep "python 3\.7" \
   && nvcc --version \
+  && python -c 'import torch' \
+  && python -c 'import pyarrow' \
+  && python -c 'import apex' \
   && echo "Done with Apex"
 
 # Using "Ubuntu 16.04 LTS" as showed at:
@@ -186,7 +232,7 @@ RUN cd /tmp \
 #   && rm -rf /var/lib/apt/lists/* \
 #   && cd /tmp \
 #   && nvcc --version \
-#   && _apex_commit="39e153a3159724432257a8fc118807b359f4d1c8" \
+#   && _apex_commit="4ff153cd50e4533b21dc1fd97c0ed609e19c4042" \
 #   && curl -L -O "https://github.com/NVIDIA/apex/archive/${_apex_commit}.zip" \
 #   && unzip -x "${_apex_commit}.zip" \
 #   && cd "apex-${_apex_commit}" \
@@ -227,6 +273,10 @@ RUN cd /tmp \
   && pip --version \
   && pip --version 2>&1 | grep "python 3\.7" \
   && nvcc --version \
+  && pip show 'pyarrow' \
+  && pip show 'torch' \
+  && pip show 'apex' \
   && python -c 'import pyarrow' \
   && python -c 'import torch' \
+  && python -c 'import apex' \
   && echo "Done with Final"
